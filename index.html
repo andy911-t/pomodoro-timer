@@ -4,13 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
-    <title>Focus App</title> <meta name="apple-mobile-web-app-title" content="Focus App">
+    <title>Focus App</title>
+    <meta name="apple-mobile-web-app-title" content="Focus App">
     <meta name="application-name" content="Focus App">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     
     <style>
-        /* "Matrix Mint & Red" Theme */
+        /* Matrix Mint & Red Theme */
         body { 
             font-family: 'Inter', sans-serif; 
             background-color: #050505; 
@@ -102,9 +104,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // ============================================
-        //  YOUR FIREBASE CONFIG
-        // ============================================
+        // CONFIG
         const firebaseConfig = {
             apiKey: "AIzaSyAaXrGGPPR5G1X8zNVBuvIhHLeBcXIkABA",
             authDomain: "pomodoro-fe692.firebaseapp.com",
@@ -115,13 +115,8 @@
             appId: "1:578181442459:web:71edaca2813b52ce5f8f3e",
             measurementId: "G-Z569M8NMMG"
         };
-
-        // ============================================
-        //  YOUR GOOGLE SCRIPT URL (Pre-filled)
-        // ============================================
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxuoMLqdVcoDP9FEx239EzoME_XQq7mkfJ1rOqJEClCJbbP-XZXjAePJkIBHJgmfXhE/exec"; 
-        // ============================================
-
+        
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const timerRef = ref(db, 'shared-timer');
@@ -134,33 +129,47 @@
 
         let currentMode = 'WORK', timeLeft = MODES.WORK.time, timerId = null, alarmId = null, sessionCount = 0;
         let totalWorkSeconds = 0, totalRestSeconds = 0;
+        // NEW: Sync the alarm state to the cloud
+        let isAlarmActive = false; 
 
+        // UI
         const timerDisplay = document.getElementById('timer'), modeLabel = document.getElementById('mode-label');
         const toggleBtn = document.getElementById('toggle-btn'), resetBtn = document.getElementById('reset-btn'), nextBtn = document.getElementById('next-btn');
         const resetStatsBtn = document.getElementById('reset-stats-btn'), logSheetBtn = document.getElementById('log-sheet-btn');
         const dots = document.querySelectorAll('.dot'), workStat = document.getElementById('total-work'), restStat = document.getElementById('total-rest');
 
+        // AUDIO ENGINE
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
         function playTone() {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator(); const gain = ctx.createGain();
-            osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime);
-            gain.gain.setValueAtTime(0, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.05); gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
-            osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 1.5);
+            initAudio(); // Ensure context exists
+            const osc = audioCtx.createOscillator(); 
+            const gain = audioCtx.createGain();
+            osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0, audioCtx.currentTime); 
+            gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.05); 
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+            osc.connect(gain); gain.connect(audioCtx.destination); 
+            osc.start(); osc.stop(audioCtx.currentTime + 1.5);
         }
 
         function startAlarm() {
+            // Only start if not already ringing
+            if (alarmId) return;
+
             toggleBtn.textContent = "Complete - Start Next";
             toggleBtn.classList.replace('bg-[#4ade80]', 'bg-orange-600'); 
             toggleBtn.classList.replace('text-black', 'text-white'); 
             toggleBtn.classList.add('animate-pulse');
-            
-            // Pulse the Title on Alarm
             document.title = "⏰ TIME IS UP! — Focus App";
             
             playTone(); setTimeout(playTone, 800);
-            if(!alarmId) alarmId = setInterval(() => { 
+            alarmId = setInterval(() => { 
                 playTone(); setTimeout(playTone, 800); 
-                // Toggle Title Alert
                 document.title = (document.title.startsWith("⏰")) ? "Focus App" : "⏰ TIME IS UP! — Focus App";
             }, 4000);
         }
@@ -177,16 +186,9 @@
         function updateDisplay() {
             const mins = Math.floor(timeLeft / 60).toString().padStart(2, '0');
             const secs = (timeLeft % 60).toString().padStart(2, '0');
-            
-            // 1. Update the Main Display
             const timeString = `${mins}:${secs}`;
             timerDisplay.textContent = timeString;
-            
-            // 2. Update the Browser Tab Title
-            // Only update tab if alarm is NOT ringing (so we don't overwrite the alarm alert)
-            if (!alarmId) {
-                document.title = `${timeString} — Focus App`;
-            }
+            if (!alarmId) document.title = `${timeString} — Focus App`;
 
             modeLabel.textContent = MODES[currentMode].label;
             dots.forEach((dot, i) => dot.classList.toggle('active', i < sessionCount));
@@ -195,72 +197,94 @@
         }
 
         function syncToCloud() {
-            set(timerRef, { currentMode, timeLeft, sessionCount, totalWorkSeconds, totalRestSeconds });
+            set(timerRef, { 
+                currentMode, timeLeft, sessionCount, totalWorkSeconds, totalRestSeconds, 
+                isAlarmActive // Sending alarm status to cloud
+            });
         }
 
-        function handleCycleEnd(shouldPlaySound = true) {
+        function handleCycleEnd() {
             clearInterval(timerId); timerId = null;
             if (currentMode === 'WORK') { sessionCount++; currentMode = (sessionCount >= 4) ? 'LONG' : 'SHORT'; } 
             else { if (currentMode === 'LONG') sessionCount = 0; currentMode = 'WORK'; }
             timeLeft = MODES[currentMode].time;
+            
+            // Turn ON the alarm for everyone
+            isAlarmActive = true; 
+            
             updateDisplay(); 
-            if (shouldPlaySound) startAlarm(); 
             syncToCloud();
         }
 
         toggleBtn.addEventListener('click', () => {
-            if (alarmId) { stopAlarm(); toggleBtn.click(); return; }
+            initAudio(); // Initialize audio on first user click
+            
+            if (isAlarmActive) { 
+                // Stop the alarm for everyone
+                isAlarmActive = false; 
+                stopAlarm(); 
+                toggleBtn.click(); // Auto-start next
+                syncToCloud();
+                return; 
+            }
+
             if (timerId) { clearInterval(timerId); timerId = null; toggleBtn.textContent = 'Resume'; syncToCloud(); } 
             else {
                 toggleBtn.textContent = 'Pause';
-                const ctx = new (window.AudioContext || window.webkitAudioContext)(); if (ctx.state === 'suspended') ctx.resume();
                 timerId = setInterval(() => {
                     timeLeft--;
                     if (currentMode === 'WORK') totalWorkSeconds++; else totalRestSeconds++;
-                    if (timeLeft <= 0) handleCycleEnd(true);
+                    if (timeLeft <= 0) handleCycleEnd(); // Triggers sync
                     updateDisplay();
                     if (timeLeft % 5 === 0) syncToCloud();
                 }, 1000);
             }
         });
 
-        // RESTART CLOCK 
+        // RESTART CLOCK (Clears alarm too)
         resetBtn.addEventListener('click', () => { 
+            isAlarmActive = false; 
             stopAlarm(); 
-            clearInterval(timerId); 
-            timerId = null; 
-            timeLeft = MODES[currentMode].time; 
-            toggleBtn.textContent = 'Start'; 
-            updateDisplay(); 
-            syncToCloud(); 
+            clearInterval(timerId); timerId = null; timeLeft = MODES[currentMode].time; toggleBtn.textContent = 'Start'; updateDisplay(); syncToCloud(); 
         });
 
-        // NEXT PHASE
-        nextBtn.addEventListener('click', () => { stopAlarm(); handleCycleEnd(false); stopAlarm(); toggleBtn.textContent = 'Start'; updateDisplay(); syncToCloud(); });
+        // NEXT PHASE (Clears alarm too)
+        nextBtn.addEventListener('click', () => { 
+            isAlarmActive = false; 
+            stopAlarm(); 
+            handleCycleEnd(); 
+            isAlarmActive = false; // ensure we don't ring after skip
+            toggleBtn.textContent = 'Start'; updateDisplay(); syncToCloud(); 
+        });
 
-        // CLEAR STATS 
         resetStatsBtn.addEventListener('click', () => {
-            if(confirm("Are you sure you want to clear your stats?")) {
-                totalWorkSeconds = 0; totalRestSeconds = 0; updateDisplay(); syncToCloud();
-            }
+            if(confirm("Are you sure you want to clear your stats?")) { totalWorkSeconds = 0; totalRestSeconds = 0; updateDisplay(); syncToCloud(); }
         });
 
         logSheetBtn.addEventListener('click', () => {
             logSheetBtn.textContent = "Saving...";
             const url = `${GOOGLE_SCRIPT_URL}?work=${format(totalWorkSeconds)}&rest=${format(totalRestSeconds)}`;
-            fetch(url, { mode: 'no-cors' })
-                .then(() => {
-                    logSheetBtn.textContent = "Saved!";
-                    setTimeout(() => logSheetBtn.textContent = "Log to Sheet", 2000);
-                })
-                .catch(err => { console.error(err); logSheetBtn.textContent = "Error"; });
+            fetch(url, { mode: 'no-cors' }).then(() => { logSheetBtn.textContent = "Saved!"; setTimeout(() => logSheetBtn.textContent = "Log to Sheet", 2000); });
         });
 
+        // LISTENER: React to Cloud Changes
         onValue(timerRef, (snapshot) => {
             const data = snapshot.val();
-            if (data && !timerId) {
-                currentMode = data.currentMode; timeLeft = data.timeLeft; sessionCount = data.sessionCount;
-                totalWorkSeconds = data.totalWorkSeconds; totalRestSeconds = data.totalRestSeconds;
+            if (data) {
+                // Sync State
+                if (!timerId) {
+                    currentMode = data.currentMode; timeLeft = data.timeLeft; sessionCount = data.sessionCount;
+                    totalWorkSeconds = data.totalWorkSeconds; totalRestSeconds = data.totalRestSeconds;
+                }
+                
+                // Sync Alarm: If cloud says alarm is ON, we ring.
+                isAlarmActive = data.isAlarmActive;
+                if (isAlarmActive) {
+                    startAlarm();
+                } else {
+                    stopAlarm();
+                }
+
                 updateDisplay();
             }
         });
