@@ -11,25 +11,24 @@
         /* "Matrix Mint & Red" Theme */
         body { 
             font-family: 'Inter', sans-serif; 
-            background-color: #050505; /* Deepest Black */
+            background-color: #050505; 
             color: #e5e5e5; 
             -webkit-font-smoothing: antialiased; 
         }
         
         .glass-card { 
-            background: rgba(20, 20, 20, 0.8); /* Darker, stealthy card */
+            background: rgba(20, 20, 20, 0.8); 
             backdrop-filter: blur(16px); 
-            border: 1px solid rgba(74, 222, 128, 0.1); /* Subtle green glow border */
+            border: 1px solid rgba(74, 222, 128, 0.1); 
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
         }
         
-        /* Monospace font for the timer to look like code */
         .timer-display { 
             font-family: 'JetBrains Mono', monospace;
             font-variant-numeric: tabular-nums; 
             letter-spacing: -0.05em; 
             color: #4ade80; /* Neon Mint */
-            text-shadow: 0 0 20px rgba(74, 222, 128, 0.2); /* Soft glow */
+            text-shadow: 0 0 20px rgba(74, 222, 128, 0.2); 
         }
         
         .dot { 
@@ -37,7 +36,7 @@
             background: #262626; transition: all 0.4s ease; 
         }
         .dot.active { 
-            background: #4ade80; /* Green active dots */
+            background: #4ade80; 
             box-shadow: 0 0 8px rgba(74, 222, 128, 0.5); 
         }
         
@@ -64,7 +63,7 @@
                 
                 <div class="flex gap-3">
                     <button id="reset-btn" class="btn-transition flex-1 py-3 bg-neutral-900/50 text-rose-500 rounded-xl text-xs font-semibold border border-rose-900/30 hover:bg-rose-950/30 hover:border-rose-500/50 hover:text-rose-400">
-                        Reset Timer
+                        Restart Clock
                     </button>
                     <button id="next-btn" class="btn-transition flex-1 py-3 bg-neutral-900/50 text-rose-500 rounded-xl text-xs font-semibold border border-rose-900/30 hover:bg-rose-950/30 hover:border-rose-500/50 hover:text-rose-400">
                         Next Phase
@@ -77,7 +76,7 @@
                             Log to Sheet
                         </button>
                         <button id="reset-stats-btn" class="bg-red-900/30 text-red-400 hover:text-red-300 hover:bg-red-900/50 text-[9px] px-3 py-1 rounded border border-red-800/50 transition-colors uppercase tracking-wider font-semibold">
-                            Reset
+                            Clear Stats
                         </button>
                     </div>
 
@@ -115,9 +114,9 @@
         };
 
         // ============================================
-        //  ⚠️ PASTE YOUR GOOGLE SCRIPT URL BELOW ⚠️
+        //  YOUR GOOGLE SCRIPT URL
         // ============================================
-        const GOOGLE_SCRIPT_URL = "PASTE_YOUR_LONG_URL_HERE"; 
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxuoMLqdVcoDP9FEx239EzoME_XQq7mkfJ1rOqJEClCJbbP-XZXjAePJkIBHJgmfXhE/exec"; 
         // ============================================
 
         const app = initializeApp(firebaseConfig);
@@ -148,7 +147,6 @@
 
         function startAlarm() {
             toggleBtn.textContent = "Complete - Start Next";
-            // Alarm Color: Shift from Green to Orange
             toggleBtn.classList.replace('bg-[#4ade80]', 'bg-orange-600'); 
             toggleBtn.classList.replace('text-black', 'text-white'); 
             toggleBtn.classList.add('animate-pulse');
@@ -206,29 +204,34 @@
             }
         });
 
-        resetBtn.addEventListener('click', () => { stopAlarm(); clearInterval(timerId); timerId = null; timeLeft = MODES[currentMode].time; toggleBtn.textContent = 'Start'; updateDisplay(); syncToCloud(); });
+        // RESTART CLOCK (Resets only the timer, keeps stats)
+        resetBtn.addEventListener('click', () => { 
+            stopAlarm(); 
+            clearInterval(timerId); 
+            timerId = null; 
+            timeLeft = MODES[currentMode].time; 
+            toggleBtn.textContent = 'Start'; 
+            updateDisplay(); 
+            syncToCloud(); 
+        });
+
+        // NEXT PHASE
         nextBtn.addEventListener('click', () => { stopAlarm(); handleCycleEnd(false); stopAlarm(); toggleBtn.textContent = 'Start'; updateDisplay(); syncToCloud(); });
 
+        // CLEAR STATS (Resets only the numbers at the bottom)
         resetStatsBtn.addEventListener('click', () => {
-            if(confirm("Are you sure you want to reset your daily stats?")) {
+            if(confirm("Are you sure you want to clear your stats?")) {
                 totalWorkSeconds = 0; totalRestSeconds = 0; updateDisplay(); syncToCloud();
             }
         });
 
         logSheetBtn.addEventListener('click', () => {
-            if(GOOGLE_SCRIPT_URL.includes("PASTE")) {
-                alert("Please add your Google Script URL in the code first!");
-                return;
-            }
             logSheetBtn.textContent = "Saving...";
             const url = `${GOOGLE_SCRIPT_URL}?work=${format(totalWorkSeconds)}&rest=${format(totalRestSeconds)}`;
             fetch(url, { mode: 'no-cors' })
                 .then(() => {
                     logSheetBtn.textContent = "Saved!";
                     setTimeout(() => logSheetBtn.textContent = "Log to Sheet", 2000);
-                    if(confirm("Saved successfully! Reset stats for tomorrow?")) {
-                        totalWorkSeconds = 0; totalRestSeconds = 0; updateDisplay(); syncToCloud();
-                    }
                 })
                 .catch(err => { console.error(err); logSheetBtn.textContent = "Error"; });
         });
