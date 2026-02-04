@@ -187,7 +187,8 @@
             });
         }
 
-        function handleCycleEnd() {
+        // MODIFIED: accepts a boolean to decide if we want sound or not
+        function handleCycleEnd(shouldPlaySound = true) {
             clearInterval(timerId); 
             timerId = null;
             
@@ -201,7 +202,11 @@
             
             timeLeft = MODES[currentMode].time;
             updateDisplay(); 
-            startAlarm(); 
+            
+            if (shouldPlaySound) {
+                startAlarm(); 
+            }
+            
             syncToCloud();
         }
 
@@ -237,7 +242,7 @@
                     if (currentMode === 'WORK') totalWorkSeconds++; 
                     else totalRestSeconds++;
                     
-                    if (timeLeft <= 0) handleCycleEnd();
+                    if (timeLeft <= 0) handleCycleEnd(true); // TRUE = Play Sound
                     
                     updateDisplay();
                     if (timeLeft % 5 === 0) syncToCloud(); // Sync every 5s
@@ -259,8 +264,7 @@
         // 3. NEXT PHASE
         nextBtn.addEventListener('click', () => {
             stopAlarm();
-            handleCycleEnd();
-            stopAlarm(); // Clear the alarm triggered by handleCycleEnd
+            handleCycleEnd(false); // FALSE = Do NOT play sound
             toggleBtn.textContent = 'Start';
             updateDisplay();
             syncToCloud();
