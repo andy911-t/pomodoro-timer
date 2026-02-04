@@ -129,8 +129,10 @@
 
         let currentMode = 'WORK', timeLeft = MODES.WORK.time, timerId = null, alarmId = null, sessionCount = 0;
         let totalWorkSeconds = 0, totalRestSeconds = 0;
-        // NEW: Sync the alarm state to the cloud
         let isAlarmActive = false; 
+        
+        // NEW: Absolute Target Time (The "True" End Time)
+        let targetEndTime = null; 
 
         // UI
         const timerDisplay = document.getElementById('timer'), modeLabel = document.getElementById('mode-label');
@@ -146,7 +148,7 @@
         }
 
         function playTone() {
-            initAudio(); // Ensure context exists
+            initAudio(); 
             const osc = audioCtx.createOscillator(); 
             const gain = audioCtx.createGain();
             osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime);
@@ -158,15 +160,12 @@
         }
 
         function startAlarm() {
-            // Only start if not already ringing
             if (alarmId) return;
-
             toggleBtn.textContent = "Complete - Start Next";
             toggleBtn.classList.replace('bg-[#4ade80]', 'bg-orange-600'); 
             toggleBtn.classList.replace('text-black', 'text-white'); 
             toggleBtn.classList.add('animate-pulse');
             document.title = "⏰ TIME IS UP! — Focus App";
-            
             playTone(); setTimeout(playTone, 800);
             alarmId = setInterval(() => { 
                 playTone(); setTimeout(playTone, 800); 
@@ -184,8 +183,8 @@
         const format = (s) => new Date(s * 1000).toISOString().substr(11, 8);
 
         function updateDisplay() {
-            const mins = Math.floor(timeLeft / 60).toString().padStart(2, '0');
-            const secs = (timeLeft % 60).toString().padStart(2, '0');
+            const mins = Math.max(0, Math.floor(timeLeft / 60)).toString().padStart(2, '0');
+            const secs = Math.max(0, (timeLeft % 60)).toString().padStart(2, '0');
             const timeString = `${mins}:${secs}`;
             timerDisplay.textContent = timeString;
             if (!alarmId) document.title = `${timeString} — Focus App`;
@@ -197,9 +196,10 @@
         }
 
         function syncToCloud() {
+            // We now sync 'targetEndTime' which is the source of truth
             set(timerRef, { 
                 currentMode, timeLeft, sessionCount, totalWorkSeconds, totalRestSeconds, 
-                isAlarmActive // Sending alarm status to cloud
+                isAlarmActive, targetEndTime 
             });
         }
 
@@ -207,9 +207,9 @@
             clearInterval(timerId); timerId = null;
             if (currentMode === 'WORK') { sessionCount++; currentMode = (sessionCount >= 4) ? 'LONG' : 'SHORT'; } 
             else { if (currentMode === 'LONG') sessionCount = 0; currentMode = 'WORK'; }
-            timeLeft = MODES[currentMode].time;
             
-            // Turn ON the alarm for everyone
+            timeLeft = MODES[currentMode].time;
+            targetEndTime = null; // Reset target on cycle end
             isAlarmActive = true; 
             
             updateDisplay(); 
@@ -217,43 +217,64 @@
         }
 
         toggleBtn.addEventListener('click', () => {
-            initAudio(); // Initialize audio on first user click
+            initAudio(); 
             
             if (isAlarmActive) { 
-                // Stop the alarm for everyone
-                isAlarmActive = false; 
-                stopAlarm(); 
-                toggleBtn.click(); // Auto-start next
-                syncToCloud();
-                return; 
+                isAlarmActive = false; stopAlarm(); toggleBtn.click(); syncToCloud(); return; 
             }
 
-            if (timerId) { clearInterval(timerId); timerId = null; toggleBtn.textContent = 'Resume'; syncToCloud(); } 
-            else {
+            if (timerId) { 
+                // PAUSE
+                clearInterval(timerId); timerId = null; 
+                targetEndTime = null; // Clear the target time
+                toggleBtn.textContent = 'Resume'; 
+                syncToCloud(); 
+            } else {
+                // START / RESUME
                 toggleBtn.textContent = 'Pause';
+                
+                // 1. Set the Absolute End Time (Now + Remaining Seconds)
+                // This timestamp is what other devices will see
+                targetEndTime = Date.now() + (timeLeft * 1000);
+                
+                // 2. Sync immediately so Mac/Chromebook sees the new End Date
+                syncToCloud(); 
+
                 timerId = setInterval(() => {
-                    timeLeft--;
-                    if (currentMode === 'WORK') totalWorkSeconds++; else totalRestSeconds++;
-                    if (timeLeft <= 0) handleCycleEnd(); // Triggers sync
-                    updateDisplay();
-                    if (timeLeft % 5 === 0) syncToCloud();
+                    const now = Date.now();
+                    
+                    // 3. Always calculate remaining time based on the Fixed Target
+                    // This fixes the sleep/drift issue
+                    const exactTimeLeft = Math.ceil((targetEndTime - now) / 1000);
+                    
+                    // Calculate stats
+                    const delta = timeLeft - exactTimeLeft;
+                    if (delta > 0) {
+                        if (currentMode === 'WORK') totalWorkSeconds += delta; 
+                        else totalRestSeconds += delta;
+                    }
+
+                    timeLeft = exactTimeLeft;
+
+                    if (timeLeft <= 0) {
+                        handleCycleEnd();
+                    } else {
+                        updateDisplay();
+                        if (timeLeft % 5 === 0) syncToCloud();
+                    }
                 }, 1000);
             }
         });
 
-        // RESTART CLOCK (Clears alarm too)
         resetBtn.addEventListener('click', () => { 
-            isAlarmActive = false; 
-            stopAlarm(); 
-            clearInterval(timerId); timerId = null; timeLeft = MODES[currentMode].time; toggleBtn.textContent = 'Start'; updateDisplay(); syncToCloud(); 
+            isAlarmActive = false; stopAlarm(); clearInterval(timerId); timerId = null; 
+            targetEndTime = null; 
+            timeLeft = MODES[currentMode].time; 
+            toggleBtn.textContent = 'Start'; updateDisplay(); syncToCloud(); 
         });
 
-        // NEXT PHASE (Clears alarm too)
         nextBtn.addEventListener('click', () => { 
-            isAlarmActive = false; 
-            stopAlarm(); 
-            handleCycleEnd(); 
-            isAlarmActive = false; // ensure we don't ring after skip
+            isAlarmActive = false; stopAlarm(); handleCycleEnd(); isAlarmActive = false; 
             toggleBtn.textContent = 'Start'; updateDisplay(); syncToCloud(); 
         });
 
@@ -267,23 +288,31 @@
             fetch(url, { mode: 'no-cors' }).then(() => { logSheetBtn.textContent = "Saved!"; setTimeout(() => logSheetBtn.textContent = "Log to Sheet", 2000); });
         });
 
-        // LISTENER: React to Cloud Changes
         onValue(timerRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                // Sync State
                 if (!timerId) {
-                    currentMode = data.currentMode; timeLeft = data.timeLeft; sessionCount = data.sessionCount;
-                    totalWorkSeconds = data.totalWorkSeconds; totalRestSeconds = data.totalRestSeconds;
+                    currentMode = data.currentMode; 
+                    sessionCount = data.sessionCount;
+                    totalWorkSeconds = data.totalWorkSeconds; 
+                    totalRestSeconds = data.totalRestSeconds;
+
+                    // THE FIX: Sync based on Absolute Timestamp
+                    if (data.targetEndTime) {
+                        // If there is a target time in the cloud, calculate the REAL time left
+                        const now = Date.now();
+                        const realTimeLeft = Math.ceil((data.targetEndTime - now) / 1000);
+                        timeLeft = (realTimeLeft > 0) ? realTimeLeft : 0;
+                        targetEndTime = data.targetEndTime; // Keep local target in sync
+                    } else {
+                        // If paused, just use the saved duration
+                        timeLeft = data.timeLeft;
+                        targetEndTime = null;
+                    }
                 }
                 
-                // Sync Alarm: If cloud says alarm is ON, we ring.
                 isAlarmActive = data.isAlarmActive;
-                if (isAlarmActive) {
-                    startAlarm();
-                } else {
-                    stopAlarm();
-                }
+                if (isAlarmActive) startAlarm(); else stopAlarm();
 
                 updateDisplay();
             }
