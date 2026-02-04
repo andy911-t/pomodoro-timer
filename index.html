@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>30:00 — Sync Focus</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <title>Focus App</title>
+    <meta name="apple-mobile-web-app-title" content="Focus App"> <meta name="application-name" content="Focus App">           <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     
     <style>
@@ -14,6 +15,8 @@
             background-color: #050505; 
             color: #e5e5e5; 
             -webkit-font-smoothing: antialiased; 
+            /* Prevent bouncing on mobile */
+            overscroll-behavior: none;
         }
         
         .glass-card { 
@@ -27,7 +30,7 @@
             font-family: 'JetBrains Mono', monospace;
             font-variant-numeric: tabular-nums; 
             letter-spacing: -0.05em; 
-            color: #4ade80; /* Neon Mint */
+            color: #4ade80; 
             text-shadow: 0 0 20px rgba(74, 222, 128, 0.2); 
         }
         
@@ -114,7 +117,7 @@
         };
 
         // ============================================
-        //  YOUR GOOGLE SCRIPT URL
+        //  YOUR GOOGLE SCRIPT URL (Pre-filled)
         // ============================================
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxuoMLqdVcoDP9FEx239EzoME_XQq7mkfJ1rOqJEClCJbbP-XZXjAePJkIBHJgmfXhE/exec"; 
         // ============================================
@@ -204,7 +207,7 @@
             }
         });
 
-        // RESTART CLOCK (Resets only the timer, keeps stats)
+        // RESTART CLOCK 
         resetBtn.addEventListener('click', () => { 
             stopAlarm(); 
             clearInterval(timerId); 
@@ -218,7 +221,7 @@
         // NEXT PHASE
         nextBtn.addEventListener('click', () => { stopAlarm(); handleCycleEnd(false); stopAlarm(); toggleBtn.textContent = 'Start'; updateDisplay(); syncToCloud(); });
 
-        // CLEAR STATS (Resets only the numbers at the bottom)
+        // CLEAR STATS 
         resetStatsBtn.addEventListener('click', () => {
             if(confirm("Are you sure you want to clear your stats?")) {
                 totalWorkSeconds = 0; totalRestSeconds = 0; updateDisplay(); syncToCloud();
