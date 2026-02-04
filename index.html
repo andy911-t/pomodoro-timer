@@ -58,14 +58,20 @@
                     </button>
                 </div>
                 
-                <div class="mt-8 pt-6 border-t border-white/5 flex justify-between text-[10px] uppercase tracking-widest text-neutral-600">
-                    <div class="text-left">
-                        <p class="mb-1">Total Work</p>
-                        <span id="total-work" class="text-neutral-400 text-sm">00:00:00</span>
-                    </div>
-                    <div class="text-right">
-                        <p class="mb-1">Total Rest</p>
-                        <span id="total-rest" class="text-neutral-400 text-sm">00:00:00</span>
+                <div class="mt-8 pt-6 border-t border-white/5 relative">
+                    <button id="reset-stats-btn" class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-neutral-900 text-neutral-600 hover:text-white text-[9px] px-2 py-1 rounded border border-neutral-800 transition-colors uppercase tracking-wider">
+                        Reset Stats
+                    </button>
+
+                    <div class="flex justify-between text-[10px] uppercase tracking-widest text-neutral-600 mt-2">
+                        <div class="text-left">
+                            <p class="mb-1">Total Work</p>
+                            <span id="total-work" class="text-neutral-400 text-sm">00:00:00</span>
+                        </div>
+                        <div class="text-right">
+                            <p class="mb-1">Total Rest</p>
+                            <span id="total-rest" class="text-neutral-400 text-sm">00:00:00</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -116,6 +122,7 @@
         const toggleBtn = document.getElementById('toggle-btn');
         const resetBtn = document.getElementById('reset-btn');
         const nextBtn = document.getElementById('next-btn');
+        const resetStatsBtn = document.getElementById('reset-stats-btn'); // New Button
         const dots = document.querySelectorAll('.dot');
         const workStat = document.getElementById('total-work');
         const restStat = document.getElementById('total-rest');
@@ -214,7 +221,6 @@
 
         // 1. START / PAUSE / STOP ALARM
         toggleBtn.addEventListener('click', () => {
-            // If alarm is ringing, stop it and start next phase
             if (alarmId) {
                 stopAlarm(); 
                 toggleBtn.click(); // Auto-start the next timer
@@ -222,35 +228,29 @@
             }
 
             if (timerId) {
-                // Pause
                 clearInterval(timerId);
                 timerId = null;
                 toggleBtn.textContent = 'Resume';
                 syncToCloud();
             } else {
-                // Start
                 toggleBtn.textContent = 'Pause';
-                
-                // Unlock Audio Context (required by browsers)
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
                 if (ctx.state === 'suspended') ctx.resume();
 
                 timerId = setInterval(() => {
                     timeLeft--;
-                    
-                    // Track Stats
                     if (currentMode === 'WORK') totalWorkSeconds++; 
                     else totalRestSeconds++;
                     
-                    if (timeLeft <= 0) handleCycleEnd(true); // TRUE = Play Sound
+                    if (timeLeft <= 0) handleCycleEnd(true);
                     
                     updateDisplay();
-                    if (timeLeft % 5 === 0) syncToCloud(); // Sync every 5s
+                    if (timeLeft % 5 === 0) syncToCloud();
                 }, 1000);
             }
         });
 
-        // 2. RESET
+        // 2. RESET TIMER
         resetBtn.addEventListener('click', () => {
             stopAlarm();
             clearInterval(timerId); 
@@ -264,16 +264,26 @@
         // 3. NEXT PHASE
         nextBtn.addEventListener('click', () => {
             stopAlarm();
-            handleCycleEnd(false); // FALSE = Do NOT play sound
+            handleCycleEnd(false);
+            stopAlarm(); 
             toggleBtn.textContent = 'Start';
             updateDisplay();
             syncToCloud();
         });
 
+        // 4. RESET STATS (New!)
+        resetStatsBtn.addEventListener('click', () => {
+            if(confirm("Are you sure you want to reset your daily stats?")) {
+                totalWorkSeconds = 0;
+                totalRestSeconds = 0;
+                updateDisplay();
+                syncToCloud();
+            }
+        });
+
         // --- Firebase Listener (Sync from Cloud) ---
         onValue(timerRef, (snapshot) => {
             const data = snapshot.val();
-            // Only update from cloud if I'm not the one counting down
             if (data && !timerId) {
                 currentMode = data.currentMode; 
                 timeLeft = data.timeLeft; 
@@ -284,7 +294,6 @@
             }
         });
 
-        // Initial render
         updateDisplay();
     </script>
 </body>
