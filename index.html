@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
-    <title>Focus App</title>
-    <meta name="apple-mobile-web-app-title" content="Focus App"> <meta name="application-name" content="Focus App">           <script src="https://cdn.tailwindcss.com"></script>
+    <title>Focus App</title> <meta name="apple-mobile-web-app-title" content="Focus App">
+    <meta name="application-name" content="Focus App">
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     
     <style>
@@ -15,7 +16,6 @@
             background-color: #050505; 
             color: #e5e5e5; 
             -webkit-font-smoothing: antialiased; 
-            /* Prevent bouncing on mobile */
             overscroll-behavior: none;
         }
         
@@ -154,8 +154,15 @@
             toggleBtn.classList.replace('text-black', 'text-white'); 
             toggleBtn.classList.add('animate-pulse');
             
+            // Pulse the Title on Alarm
+            document.title = "⏰ TIME IS UP! — Focus App";
+            
             playTone(); setTimeout(playTone, 800);
-            if(!alarmId) alarmId = setInterval(() => { playTone(); setTimeout(playTone, 800); }, 4000);
+            if(!alarmId) alarmId = setInterval(() => { 
+                playTone(); setTimeout(playTone, 800); 
+                // Toggle Title Alert
+                document.title = (document.title.startsWith("⏰")) ? "Focus App" : "⏰ TIME IS UP! — Focus App";
+            }, 4000);
         }
 
         function stopAlarm() {
@@ -170,7 +177,17 @@
         function updateDisplay() {
             const mins = Math.floor(timeLeft / 60).toString().padStart(2, '0');
             const secs = (timeLeft % 60).toString().padStart(2, '0');
-            timerDisplay.textContent = `${mins}:${secs}`;
+            
+            // 1. Update the Main Display
+            const timeString = `${mins}:${secs}`;
+            timerDisplay.textContent = timeString;
+            
+            // 2. Update the Browser Tab Title
+            // Only update tab if alarm is NOT ringing (so we don't overwrite the alarm alert)
+            if (!alarmId) {
+                document.title = `${timeString} — Focus App`;
+            }
+
             modeLabel.textContent = MODES[currentMode].label;
             dots.forEach((dot, i) => dot.classList.toggle('active', i < sessionCount));
             workStat.textContent = format(totalWorkSeconds);
