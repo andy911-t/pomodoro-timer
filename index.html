@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>Pomodorro </title>
+    <link rel="stylesheet" href="./style.css">
+
+  </head>
+    
+  <body>
+  <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>30:00 — Sync Focus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="h-screen flex items-center justify-center overflow-hidden">
+    <div class="w-full max-w-md px-6">
+        <div class="glass-card rounded-[40px] p-12 text-center shadow-2xl relative">
+            <div id="session-dots" class="flex justify-center gap-2 mb-6">
+                <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+            </div>
+            <div id="mode-label" class="text-xs uppercase tracking-[0.3em] text-neutral-500 mb-8 font-medium">Deep Work</div>
+            <div id="timer" class="text-8xl font-light mb-12 text-white">30:00</div>
+            <button id="toggle-btn" class="w-full py-4 bg-white text-black rounded-2xl font-medium transition-all hover:bg-neutral-200">Start</button>
+            
+            <div class="mt-12 pt-8 border-t border-white/5 flex justify-between text-[10px] uppercase tracking-widest text-neutral-600">
+                <div class="text-left">
+                    <p class="mb-1">Total Work</p>
+                    <span id="total-work" class="text-neutral-400 text-sm">00:00:00</span>
+                </div>
+                <div class="text-right">
+                    <p class="mb-1">Total Rest</p>
+                    <span id="total-rest" class="text-neutral-400 text-sm">00:00:00</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="script.js"></script>
+</body>
+</html>
+    <script type="module" src="./script.js"></script>
+
+  </body>
+  
+</html>
