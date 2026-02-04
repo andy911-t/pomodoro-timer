@@ -5,49 +5,91 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>30:00 — Sync Focus</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #0a0a0a; color: #e5e5e5; -webkit-font-smoothing: antialiased; }
-        .glass-card { background: rgba(23, 23, 23, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
-        .timer-display { font-variant-numeric: tabular-nums; letter-spacing: -0.05em; }
-        .dot { width: 6px; height: 6px; border-radius: 50%; background: #262626; transition: all 0.4s ease; }
-        .dot.active { background: #ffffff; box-shadow: 0 0 8px rgba(255, 255, 255, 0.3); }
+        /* "Matrix Mint & Red" Theme */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #050505; /* Deepest Black */
+            color: #e5e5e5; 
+            -webkit-font-smoothing: antialiased; 
+        }
+        
+        .glass-card { 
+            background: rgba(20, 20, 20, 0.8); /* Darker, stealthy card */
+            backdrop-filter: blur(16px); 
+            border: 1px solid rgba(74, 222, 128, 0.1); /* Subtle green glow border */
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+        }
+        
+        /* Monospace font for the timer to look like code */
+        .timer-display { 
+            font-family: 'JetBrains Mono', monospace;
+            font-variant-numeric: tabular-nums; 
+            letter-spacing: -0.05em; 
+            color: #4ade80; /* Neon Mint */
+            text-shadow: 0 0 20px rgba(74, 222, 128, 0.2); /* Soft glow */
+        }
+        
+        .dot { 
+            width: 6px; height: 6px; border-radius: 50%; 
+            background: #262626; transition: all 0.4s ease; 
+        }
+        .dot.active { 
+            background: #4ade80; /* Green active dots */
+            box-shadow: 0 0 8px rgba(74, 222, 128, 0.5); 
+        }
+        
         .btn-transition { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
     </style>
 </head>
 <body class="h-screen flex items-center justify-center overflow-hidden">
 
     <div class="w-full max-w-md px-6">
-        <div class="glass-card rounded-[40px] p-12 text-center shadow-2xl relative">
-            <div id="session-dots" class="flex justify-center gap-2 mb-6">
+        <div class="glass-card rounded-[32px] p-12 text-center relative">
+            
+            <div id="session-dots" class="flex justify-center gap-2 mb-8">
                 <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
             </div>
 
-            <div id="mode-label" class="text-xs uppercase tracking-[0.3em] text-neutral-500 mb-8 font-medium">Deep Work</div>
-            <div id="timer" class="timer-display text-8xl font-light mb-12 text-white">30:00</div>
+            <div id="mode-label" class="text-[10px] uppercase tracking-[0.3em] text-neutral-500 mb-8 font-bold">Deep Work</div>
+            
+            <div id="timer" class="timer-display text-8xl font-medium mb-12">30:00</div>
 
-            <div class="flex flex-col gap-3">
-                <button id="toggle-btn" class="btn-transition w-full py-4 bg-white text-black rounded-2xl font-medium hover:bg-neutral-200 active:scale-[0.98]">Start</button>
+            <div class="flex flex-col gap-4">
+                <button id="toggle-btn" class="btn-transition w-full py-4 bg-[#4ade80] text-black rounded-xl font-bold hover:bg-[#22c55e] active:scale-[0.98] shadow-[0_0_15px_rgba(74,222,128,0.3)]">
+                    Start
+                </button>
                 
                 <div class="flex gap-3">
-                    <button id="reset-btn" class="btn-transition flex-1 py-3 bg-neutral-800 text-neutral-400 rounded-2xl text-xs font-medium border border-neutral-700 hover:bg-neutral-700 hover:text-white">Reset Timer</button>
-                    <button id="next-btn" class="btn-transition flex-1 py-3 bg-neutral-800 text-neutral-400 rounded-2xl text-xs font-medium border border-neutral-700 hover:bg-neutral-700 hover:text-white">Next Phase</button>
+                    <button id="reset-btn" class="btn-transition flex-1 py-3 bg-neutral-900/50 text-rose-500 rounded-xl text-xs font-semibold border border-rose-900/30 hover:bg-rose-950/30 hover:border-rose-500/50 hover:text-rose-400">
+                        Reset Timer
+                    </button>
+                    <button id="next-btn" class="btn-transition flex-1 py-3 bg-neutral-900/50 text-rose-500 rounded-xl text-xs font-semibold border border-rose-900/30 hover:bg-rose-950/30 hover:border-rose-500/50 hover:text-rose-400">
+                        Next Phase
+                    </button>
                 </div>
                 
                 <div class="mt-8 pt-6 border-t border-white/5 relative">
                     <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 flex gap-2">
-                        <button id="log-sheet-btn" class="bg-green-900 text-green-400 hover:text-white hover:bg-green-800 text-[9px] px-3 py-1 rounded border border-green-800 transition-colors uppercase tracking-wider">
+                        <button id="log-sheet-btn" class="bg-green-900/30 text-green-400 hover:text-green-300 hover:bg-green-900/50 text-[9px] px-3 py-1 rounded border border-green-800/50 transition-colors uppercase tracking-wider font-semibold">
                             Log to Sheet
                         </button>
-                        <button id="reset-stats-btn" class="bg-neutral-900 text-neutral-600 hover:text-white text-[9px] px-3 py-1 rounded border border-neutral-800 transition-colors uppercase tracking-wider">
+                        <button id="reset-stats-btn" class="bg-red-900/30 text-red-400 hover:text-red-300 hover:bg-red-900/50 text-[9px] px-3 py-1 rounded border border-red-800/50 transition-colors uppercase tracking-wider font-semibold">
                             Reset
                         </button>
                     </div>
 
-                    <div class="flex justify-between text-[10px] uppercase tracking-widest text-neutral-600 mt-2">
-                        <div class="text-left"><p class="mb-1">Total Work</p><span id="total-work" class="text-neutral-400 text-sm">00:00:00</span></div>
-                        <div class="text-right"><p class="mb-1">Total Rest</p><span id="total-rest" class="text-neutral-400 text-sm">00:00:00</span></div>
+                    <div class="flex justify-between text-[10px] uppercase tracking-widest text-neutral-600 mt-2 font-semibold">
+                        <div class="text-left">
+                            <p class="mb-1 text-green-700">Total Work</p>
+                            <span id="total-work" class="text-green-400 text-sm font-mono">00:00:00</span>
+                        </div>
+                        <div class="text-right">
+                            <p class="mb-1 text-red-800">Total Rest</p>
+                            <span id="total-rest" class="text-red-500 text-sm font-mono">00:00:00</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -58,7 +100,9 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // --- YOUR FIREBASE CONFIG ---
+        // ============================================
+        //  YOUR FIREBASE CONFIG
+        // ============================================
         const firebaseConfig = {
             apiKey: "AIzaSyAaXrGGPPR5G1X8zNVBuvIhHLeBcXIkABA",
             authDomain: "pomodoro-fe692.firebaseapp.com",
@@ -69,11 +113,12 @@
             appId: "1:578181442459:web:71edaca2813b52ce5f8f3e",
             measurementId: "G-Z569M8NMMG"
         };
-        // ----------------------------
-        
-        // --- PASTE YOUR GOOGLE SCRIPT URL HERE ---
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxuoMLqdVcoDP9FEx239EzoME_XQq7mkfJ1rOqJEClCJbbP-XZXjAePJkIBHJgmfXhE/exec";
-        // ----------------------------------------
+
+        // ============================================
+        //  ⚠️ PASTE YOUR GOOGLE SCRIPT URL BELOW ⚠️
+        // ============================================
+        const GOOGLE_SCRIPT_URL = "PASTE_YOUR_LONG_URL_HERE"; 
+        // ============================================
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
@@ -103,14 +148,20 @@
 
         function startAlarm() {
             toggleBtn.textContent = "Complete - Start Next";
-            toggleBtn.classList.replace('bg-white', 'bg-orange-600'); toggleBtn.classList.replace('text-black', 'text-white'); toggleBtn.classList.add('animate-pulse');
+            // Alarm Color: Shift from Green to Orange
+            toggleBtn.classList.replace('bg-[#4ade80]', 'bg-orange-600'); 
+            toggleBtn.classList.replace('text-black', 'text-white'); 
+            toggleBtn.classList.add('animate-pulse');
+            
             playTone(); setTimeout(playTone, 800);
             if(!alarmId) alarmId = setInterval(() => { playTone(); setTimeout(playTone, 800); }, 4000);
         }
 
         function stopAlarm() {
             if (alarmId) { clearInterval(alarmId); alarmId = null; }
-            toggleBtn.classList.replace('bg-orange-600', 'bg-white'); toggleBtn.classList.replace('text-white', 'text-black'); toggleBtn.classList.remove('animate-pulse');
+            toggleBtn.classList.replace('bg-orange-600', 'bg-[#4ade80]'); 
+            toggleBtn.classList.replace('text-white', 'text-black'); 
+            toggleBtn.classList.remove('animate-pulse');
         }
 
         const format = (s) => new Date(s * 1000).toISOString().substr(11, 8);
@@ -164,31 +215,22 @@
             }
         });
 
-        // --- NEW: Log to Sheets Logic ---
         logSheetBtn.addEventListener('click', () => {
-            if(GOOGLE_SCRIPT_URL === "PASTE_YOUR_LONG_URL_HERE") {
+            if(GOOGLE_SCRIPT_URL.includes("PASTE")) {
                 alert("Please add your Google Script URL in the code first!");
                 return;
             }
-            
             logSheetBtn.textContent = "Saving...";
-            
-            // Send data to Google Sheets
             const url = `${GOOGLE_SCRIPT_URL}?work=${format(totalWorkSeconds)}&rest=${format(totalRestSeconds)}`;
-            
             fetch(url, { mode: 'no-cors' })
                 .then(() => {
                     logSheetBtn.textContent = "Saved!";
                     setTimeout(() => logSheetBtn.textContent = "Log to Sheet", 2000);
-                    // Optional: Auto-reset stats after save
                     if(confirm("Saved successfully! Reset stats for tomorrow?")) {
                         totalWorkSeconds = 0; totalRestSeconds = 0; updateDisplay(); syncToCloud();
                     }
                 })
-                .catch(err => {
-                    console.error(err);
-                    logSheetBtn.textContent = "Error";
-                });
+                .catch(err => { console.error(err); logSheetBtn.textContent = "Error"; });
         });
 
         onValue(timerRef, (snapshot) => {
